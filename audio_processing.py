@@ -18,14 +18,18 @@ class Audio:
         self.format = pyaudio.paInt16
         self.recording = False
         self.frames = []
-        self.storage_path = "recordings"
+        self.recording_storage_path = "recordings"
+        self.transcription_storage_path = "transcriptions"
         self.stream = None
         self.audio_thread = None
         self.model = None
         
         # Create storage directory if it doesn't exist
-        if not os.path.exists(self.storage_path):
-            os.makedirs(self.storage_path)
+        if not os.path.exists(self.recording_storage_path):
+            os.makedirs(self.recording_storage_path)
+
+        if not os.path.exists(self.transcription_storage_path):
+            os.makedirs(self.transcription_storage_path)
     
 
     def _setup_microphone(self):
@@ -95,20 +99,23 @@ class Audio:
         
         # Generate filename if not provided
         if filename is None:
-            filename = f"recording_{int(time.time())}.wav"
+            filename = f"recording_{int(time.time())}"
         
         self.current_filename = filename
         return filename
     
 
-    def _stop_recording(self):
+    def _stop_recording(self, transcribe=True, save_transcription=False):
         """
-        Stop current recording and save it
+        Stop current recording, save it, and optionally transcribe
+        Args:
+            transcribe (bool): Whether to transcribe the recording immediately
+            save_transcription (bool): Whether to save the transcription to a file
         Returns:
-            str: Path to the saved recording file, None if failed
+            tuple: (recording_path, transcription_result) or (recording_path, None) if transcription is disabled
         """
         if not self.recording:
-            return None
+            return None, None
             
         self.recording = False
         
@@ -122,7 +129,18 @@ class Audio:
             self.stream.close()
             
         # Save the recording
-        return self._save_recording(self.current_filename)
+        recording_path = self._save_recording(self.current_filename)
+        
+        # Perform transcription if requested
+        transcription_result = None
+        if transcribe and recording_path:
+            print("\nTranscribing the recording...")
+            transcription_result = self.transcribe_recording(
+                self.current_filename + ".wav", 
+                save=save_transcription
+            )
+            
+        return recording_path, transcription_result
     
     
     def _load_model(self, model_size="base", gpu=False):
@@ -147,7 +165,7 @@ class Audio:
             
         return True
 
-    def transcribe_recording(self, filename=None, model_size="base"):
+    def transcribe_recording(self, filename=None, model_size="base", save=False):
         """
         Transcribe a recorded audio file
         
@@ -175,7 +193,7 @@ class Audio:
                     raise ValueError("No recordings found")
                 filename = recordings[-1]
 
-            file_path = os.path.join(self.storage_path, filename)
+            file_path = os.path.join(self.recording_storage_path, filename)
             if not os.path.exists(file_path):
                 raise FileNotFoundError(f"Recording {filename} not found")
 
@@ -184,63 +202,36 @@ class Audio:
 
             # Perform transcription
             segments, info = self.model.transcribe(file_path, beam_size=5)
-            res = ""
+            text = ""
             for segment in segments:
-                res += segment.text + " "
+                text += segment.text + " "
 
             # Calculate processing time
             processing_time = time.time() - start_time
 
             # Format results
             transcription_result = {
-                'text': res,
+                'text': text,
                 'segments': [{
-                    'start': segment['start'],
-                    'end': segment['end'],
-                    'text': segment['text']
+                    'start': segment.start,
+                    'end': segment.end,
+                    'text': segment.text
                 } for segment in segments],
                 'language': info.language,
                 'language_probability': info.language_probability,
                 'processing_time': processing_time
             }
 
+            if save:
+                transcription_filename = os.path.join(self.transcription_storage_path, self.current_filename + "_transcribed.txt")
+                with open(transcription_filename, 'w', encoding='utf-8') as f:
+                    f.write(text)
+
             return transcription_result
 
         except Exception as e:
             print(f"Error during transcription: {str(e)}")
             return None
-
-    def transcribe_segments(self, filename=None, model_size="base"):
-        """
-        Get time-stamped segments of the transcription
-        
-        Args:
-            filename (str): Name of the recording to transcribe
-            model_size (str): Size of the Whisper model to use
-            
-        Returns:
-            list: List of dictionaries containing segment information
-        """
-        result = self.transcribe_recording(filename, model_size)
-        if result:
-            return result['segments']
-        return None
-
-    def get_transcription_text(self, filename=None, model_size="base"):
-        """
-        Get only the transcribed text without timing information
-        
-        Args:
-            filename (str): Name of the recording to transcribe
-            model_size (str): Size of the Whisper model to use
-            
-        Returns:
-            str: The transcribed text
-        """
-        result = self.transcribe_recording(filename, model_size)
-        if result:
-            return result['text']
-        return None
 
 
     def _save_recording(self, filename):
@@ -252,7 +243,7 @@ class Audio:
             str: Path to the saved file, None if failed
         """
         try:
-            file_path = os.path.join(self.storage_path, filename)
+            file_path = os.path.join(self.recording_storage_path, filename + ".wav")
             
             with wave.open(file_path, 'wb') as wf:
                 wf.setnchannels(self.channels)
@@ -275,7 +266,7 @@ class Audio:
             bool: True if deletion was successful, False otherwise
         """
         try:
-            file_path = os.path.join(self.storage_path, filename)
+            file_path = os.path.join(self.recording_storage_path, filename)
             if os.path.exists(file_path):
                 os.remove(file_path)
                 return True
@@ -291,7 +282,7 @@ class Audio:
             list: List of recording filenames
         """
         try:
-            return [f for f in os.listdir(self.storage_path) if f.endswith('.wav')]
+            return [f for f in os.listdir(self.recording_storage_path) if f.endswith('.wav')]
         except Exception as e:
             print(f"Error listing recordings: {str(e)}")
             return []
@@ -326,9 +317,14 @@ class Audio:
         """
         return self
 
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         """
         Context manager exit
+        
+        Args:
+            exc_type: The type of the exception
+            exc_val: The instance of the exception
+            exc_tb: The traceback of the exception
         """
         self._cleanup()
 
@@ -355,13 +351,33 @@ if __name__ == "__main__":
                 if choice == "1":
                     # Record new audio
                     duration = int(input("Enter recording duration in seconds: "))
-                    print(f"\nStarting recording for {duration} seconds...")
+                    save_transcription = input("Save transcription to file? (y/n): ").lower().strip() == 'y'
                     
+                    print(f"\nStarting recording for {duration} seconds...")
                     filename = audio._start_recording()
                     time.sleep(duration)  # Record for specified duration
-                    file_path = audio._stop_recording()
                     
-                    print(f"Recording saved to: {file_path}")
+                    file_path, transcription_result = audio._stop_recording(
+                        transcribe=True, 
+                        save_transcription=save_transcription
+                    )
+                    
+                    print(f"\nRecording saved to: {file_path}")
+                    
+                    if transcription_result:
+                        print("\nTranscription Results:")
+                        print(f"Language: {transcription_result['language']} "
+                              f"(confidence: {transcription_result['language_probability']:.2f})")
+                        print(f"Processing time: {transcription_result['processing_time']:.2f} seconds")
+                        print("\nText:")
+                        print(transcription_result['text'])
+                        
+                        if save_transcription:
+                            trans_path = os.path.join(
+                                audio.transcription_storage_path, 
+                                f"{filename}_transcribed.txt"
+                            )
+                            print(f"\nTranscription saved to: {trans_path}")
                 
                 elif choice == "2":
                     # List recordings

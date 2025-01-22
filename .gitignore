@@ -1,3 +1,5 @@
 /recordings
 *.mp3
 /languageChatbot
+.env
+instructions.txt

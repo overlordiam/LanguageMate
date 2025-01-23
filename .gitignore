@@ -2,5 +2,4 @@
 *.mp3
 /languageChatbot
 .env
-instructions.txt
 __pycache__

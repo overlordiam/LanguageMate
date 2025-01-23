@@ -1,0 +1,42 @@
+
+!sudo apt-get install espeak-ng
+!sudo apt-get install portaudio19-dev python3-pyaudio
+
+
+If you face this error:
+      error: Microsoft Visual C++ 14.0 or greater is required. Get it with "Microsoft C++ Build Tools": https://visualstudio.microsoft.com/visual-cpp-build-tools/      
+      [end of output]
+
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+  ERROR: Failed building wheel for TTS
+Failed to build TTS
+      error: Microsoft Visual C++ 14.0 or greater is required. Get it with "Microsoft C++ Build Tools": https://visualstudio.microsoft.com/visual-cpp-build-tools/      
+      [end of output]
+
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+  ERROR: Failed building wheel for TTS
+Failed to build TTS
+Failed to build TTS
+ERROR: ERROR: Failed to build installable wheels for some pyproject.toml based projects (TTS)
+
+you need to follow these steps:
+Install Microsoft C++ Build Tools
+Download and install the Microsoft C++ Build Tools from the official website:
+Visit: Microsoft C++ Build Tools
+During installation, select the "Desktop development with C++" workload. This will install the necessary compilers and libraries.
+
+
+for japanese speech synthesis, you need to follow these instructions:
+- install cutlet, unidic using pip
+- python -m unidic download
+
+use postman to send request to http://localhost:5000/stream
+
+body:
+{
+    "text": "Hello, how are you?",
+    "language": "en"
+}
+
+headers:
+Content-Type: application/json

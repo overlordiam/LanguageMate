@@ -1,6 +1,7 @@
 import queue
+import re
 import threading
-from time import sleep
+from typing import List
 
 import numpy as np
 import sounddevice as sd
@@ -20,76 +21,104 @@ class StreamingTTS:
         self.stream = None
         self.is_playing = False
         
-        # Initialize audio stream
-        self.init_audio_stream()
-        
+    def split_into_sentences(self, text: str) -> List[str]:
+        """Split text into sentences for streaming synthesis"""
+        # Basic sentence splitting on punctuation
+        sentences = re.split(r'([.!?]+)', text)
+        # Recombine sentences with their punctuation
+        sentences = [''.join(i) for i in zip(sentences[::2], sentences[1::2] + [''])]
+        # Filter out empty sentences and strip whitespace
+        sentences = [s.strip() for s in sentences if s.strip()]
+        return sentences
+
     def init_audio_stream(self):
         """Initialize the audio output stream"""
         def audio_callback(outdata, frames, time, status):
+            if status:
+                print(f'Status: {status}')
             try:
                 data = self.audio_queue.get_nowait()
                 if len(data) < len(outdata):
-                    outdata[:len(data)] = data
+                    outdata[:len(data)] = data.reshape(-1, 1)
                     outdata[len(data):] = 0
                     raise sd.CallbackStop()
                 else:
-                    outdata[:] = data
+                    outdata[:] = data.reshape(-1, 1)
             except queue.Empty:
-                outdata[:] = 0
+                outdata.fill(0)
                 raise sd.CallbackStop()
-        
+
         self.stream = sd.OutputStream(
             samplerate=self.sample_rate,
-            channels=1,
+            channels=2,
             callback=audio_callback,
-            finished_callback=self.start_next_audio
+            finished_callback=self.start_next_audio,
+            dtype=np.float32
         )
-        self.stream.start()
-    
+        
     def start_next_audio(self):
-        """Callback to start playing next audio in queue if available"""
+        """Start playing next chunk if available"""
         if not self.audio_queue.empty() and self.is_playing:
             self.stream.start()
-    
-    def generate_audio(self, text):
-        """Generate audio from text using XTTS"""
-        wav = self.tts.tts(
-            text=text,
-            speaker_wav="voice_samples/female.wav",  # Replace with your speaker reference
-            language="en"
-        )
-        return np.array(wav)
-    
-    def stream_text(self, text):
-        """Stream text as audio"""
+
+    def process_and_stream_sentence(self, sentence: str, speaker_wav: str, language: str):
+        """Process a single sentence and add it to the audio queue"""
         try:
-            # Generate audio
-            audio = self.generate_audio(text)
+            # Generate audio for the sentence
+            audio = self.tts.tts(
+                text=sentence,
+                speaker_wav=speaker_wav,
+                language=language
+            )
             
-            # Split audio into chunks for streaming
-            chunk_size = 2048
-            audio_chunks = [
-                audio[i:i + chunk_size] 
-                for i in range(0, len(audio), chunk_size)
-            ]
+            # Convert to numpy array if it isn't already
+            audio = np.array(audio, dtype=np.float32)
             
-            # Queue audio chunks
-            for chunk in audio_chunks:
-                self.audio_queue.put(chunk.reshape(-1, 1))
+            # Add to queue
+            self.audio_queue.put(audio)
             
-            # Start playback if not already playing
-            if not self.is_playing:
-                self.is_playing = True
+            # Start playback if not already started
+            if self.stream and not self.stream.active:
                 self.stream.start()
                 
         except Exception as e:
+            print(f"Error processing sentence: {str(e)}")
+
+    def stream_text(self, text: str, speaker_wav: str = "voice_samples/female.wav", language: str = "en"):
+        """Stream text as audio"""
+        try:
+            self.is_playing = True
+            
+            # Initialize stream if not already done
+            if self.stream is None:
+                self.init_audio_stream()
+            
+            # Split text into sentences
+            sentences = self.split_into_sentences(text)
+            
+            # Process each sentence in a separate thread
+            for sentence in sentences:
+                if not self.is_playing:
+                    break
+                
+                # Process and stream each sentence
+                threading.Thread(
+                    target=self.process_and_stream_sentence,
+                    args=(sentence, speaker_wav, language)
+                ).start()
+                
+        except Exception as e:
             print(f"Error in streaming text: {str(e)}")
-    
+            self.stop()
+
     def stop(self):
         """Stop the audio stream"""
         self.is_playing = False
         if self.stream:
             self.stream.stop()
+            self.stream.close()
+            self.stream = None
+        
         # Clear the queue
         while not self.audio_queue.empty():
             try:
@@ -139,9 +168,25 @@ class TTSInterface:
             self.input_thread.join(timeout=1.0)  # Wait for thread to finish with timeout
 
 def main():
-    # Create and start the TTS interface
-    tts_interface = TTSInterface()
-    tts_interface.start()
+    tts_engine = StreamingTTS()
+    
+    try:
+        while True:
+            text = input("Enter text to speak (or 'quit' to exit): ")
+            if text.lower() == 'quit':
+                break
+            
+            # You can specify your own speaker_wav file path here
+            tts_engine.stream_text(
+                text=text,
+                speaker_wav="voice_samples/female.wav",
+                language="en"
+            )
+            
+    except KeyboardInterrupt:
+        print("\nStopping...")
+    finally:
+        tts_engine.stop()
 
 if __name__ == "__main__":
     main()

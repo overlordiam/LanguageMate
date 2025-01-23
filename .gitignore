@@ -2,3 +2,5 @@
 /transcriptions
 *.mp3
 /languageChatbot
+.env
+__pycache__

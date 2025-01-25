@@ -108,7 +108,7 @@ def stream_tts():
             audio_data = np.array(audio_data)  # Convert list to NumPy array
 
         # Play the audio in real-time using sounddevice
-        tts_engine.play_audio(audio_data)
+        # tts_engine.play_audio(audio_data)
 
         logger.info(f"TTS completed in {time.time() - t0:.2f} seconds")
         return jsonify({"message": "Audio played successfully"}), 200

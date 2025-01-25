@@ -1,4 +1,4 @@
-from server import TTSEngine
+from TTS_inference_engine import TTSEngine
 import sounddevice as sd
 # Create a single instance of the TTS engine
 tts_engine = TTSEngine()

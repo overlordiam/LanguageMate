@@ -8,7 +8,7 @@ async def main():
     engine = LLMInferenceEngine()
     
     # Single inference
-    response = await engine.generate_response("Bonjour, comment allez-vous?")
+    response = engine.generate_response("Bonjour, comment allez-vous?")
     print(response)
     
     # # Batch inference

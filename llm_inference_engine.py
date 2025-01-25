@@ -4,11 +4,19 @@ import os
 import subprocess
 import time
 from typing import Any, Dict, Optional
+from pydantic import BaseModel
 
 import ollama
 from langdetect import detect
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+
+class LLMResult(BaseModel):
+    generated_text: Any
+    input_language: Any
+    model_name: str
+    status: str
+    
 
 class LLMInferenceEngine:
     """
@@ -89,7 +97,7 @@ class LLMInferenceEngine:
             raise RuntimeError(f"Failed to check/pull model: {str(e)}")
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-    async def generate_response(self, input_text: str, **kwargs) -> Dict[str, Any]:
+    def generate_response(self, input_text: str, **kwargs) -> LLMResult:
         """
         Generate a response for the given input text in the same language.
         
@@ -125,13 +133,16 @@ class LLMInferenceEngine:
             
             # Generate response using Ollama (removed await)
             response = ollama.chat(**request_params)
-            
-            return {
+            data = {
                 "generated_text": response.message.content,
                 "input_language": input_language,
                 "model_name": self.model_name,
                 "status": "success"
             }
+
+            data = LLMResult(**data)
+            
+            return data
             
         except Exception as e:
             self.logger.error(f"Error generating response: {str(e)}")

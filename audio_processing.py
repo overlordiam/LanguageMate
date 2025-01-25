@@ -1,3 +1,7 @@
+
+#TODO: 1) Add flags like verbosity for finer details
+
+
 import pyaudio
 import wave
 import os
@@ -5,6 +9,22 @@ from threading import Thread
 import time
 from faster_whisper import WhisperModel
 from keyboard_handler import KeyboardHandler
+from pydantic import BaseModel
+from typing import List
+
+
+
+class Segment(BaseModel):
+    start: float
+    end: float
+    text: str
+
+class TranscriptionResult(BaseModel):
+    text: str
+    segments: List[Segment]
+    language: str
+    language_probability: float
+    processing_time: float
 
 
 class Audio:
@@ -13,7 +33,7 @@ class Audio:
     """
     def __init__(self):
         self.p = pyaudio.PyAudio()
-        self.sample_rate = 44100
+        self.sample_rate = 16000 #44100
         self.channels = 1
         self.chunk_size = 1024
         self.format = pyaudio.paInt16
@@ -140,7 +160,8 @@ class Audio:
                 self.current_filename + ".wav", 
                 save=save_transcription
             )
-            
+        
+        print(f"Transcription: {transcription_result.text}")
         return recording_path, transcription_result
     
     
@@ -157,7 +178,7 @@ class Audio:
             try:
                 model_size = "large-v3"
                 device = "cuda" if gpu else 'cpu'
-                self.model = WhisperModel(model_size, device=device)
+                self.model = WhisperModel(model_size, device=device, compute_type='int8')
                 return True
             
             except Exception as e:
@@ -166,7 +187,7 @@ class Audio:
             
         return True
 
-    def transcribe_recording(self, filename=None, model_size="base", save=False):
+    def transcribe_recording(self, filename=None, model_size="base", save=False) -> TranscriptionResult | None:
         """
         Transcribe a recorded audio file
         
@@ -222,6 +243,8 @@ class Audio:
                 'language_probability': info.language_probability,
                 'processing_time': processing_time
             }
+
+            transcription_result = TranscriptionResult(**transcription_result)
 
             if save:
                 transcription_filename = os.path.join(self.transcription_storage_path, self.current_filename + "_transcribed.txt")
@@ -360,37 +383,43 @@ class Audio:
         )
         
         return recording_path, transcription
-
-if __name__ == "__main__":
-    try:
-        with Audio() as audio:
+    
+    def run(self, ):
+        try:
             print("\n=== Audio Recording and Transcription System ===")
             print("This system will record your audio and transcribe it automatically.")
             
             # Setup microphone
-            if not audio._setup_microphone():
+            if not self._setup_microphone():
                 print("Failed to setup microphone. Exiting...")
                 exit(1)
             
             # Record and transcribe
             print("\nPress 'ESC' to stop recording when you're done speaking...")
-            recording_path, transcription = audio.record_and_transcribe()
+            recording_path, transcription = self.record_and_transcribe()
             
             if transcription:
                 print("\nTranscription Results:")
                 print(f"Language: {transcription['language']} "
-                      f"(confidence: {transcription['language_probability']:.2f})")
+                    f"(confidence: {transcription['language_probability']:.2f})")
                 print(f"Processing time: {transcription['processing_time']:.2f} seconds")
                 print("\nText:")
                 print(transcription['text'])
                 
                 print(f"\nRecording saved to: {recording_path}")
-                print(f"Transcription saved to: {os.path.join(audio.transcription_storage_path, os.path.basename(recording_path).replace('.wav', '_transcribed.txt'))}")
+                print(f"Transcription saved to: {os.path.join(self.transcription_storage_path, os.path.basename(recording_path).replace('.wav', '_transcribed.txt'))}")
             
-    except KeyboardInterrupt:
-        print("\nProgram interrupted by user. Exiting...")
-    except Exception as e:
-        print(f"\nAn error occurred: {str(e)}")
+        except KeyboardInterrupt:
+            print("\nProgram interrupted by user. Exiting...")
+        except Exception as e:
+            print(f"\nAn error occurred: {str(e)}")
+        finally:
+            self._cleanup()    
+
+
+if __name__ == "__main__":
+    Audio().run()
+    
     
     
     

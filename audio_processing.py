@@ -4,6 +4,7 @@ import os
 from threading import Thread
 import time
 from faster_whisper import WhisperModel
+from keyboard_handler import KeyboardHandler
 
 
 class Audio:
@@ -328,125 +329,64 @@ class Audio:
         """
         self._cleanup()
 
+    def record_and_transcribe(self, stop_key='esc', save_transcription=True):
+        """
+        Record audio until stop key is pressed, then transcribe
+        
+        Args:
+            stop_key (str): Key to stop recording
+            save_transcription (bool): Whether to save transcription to file
+            
+        Returns:
+            tuple: (recording_path, transcription_result)
+        """
+        print(f"\nRecording... Press '{stop_key}' to stop recording")
+        
+        # Initialize keyboard handler
+        kb_handler = KeyboardHandler()
+        kb_handler.start_listening(stop_key)
+        
+        # Start recording
+        filename = self._start_recording()
+        
+        # Wait for stop key
+        while not kb_handler.is_stop_requested():
+            time.sleep(0.1)  # Small delay to prevent CPU overuse
+            
+        # Stop recording and transcribe
+        recording_path, transcription = self._stop_recording(
+            transcribe=True,
+            save_transcription=save_transcription
+        )
+        
+        return recording_path, transcription
+
 if __name__ == "__main__":
     try:
         with Audio() as audio:
-            print("\n=== Audio Recording and Transcription System ===\n")
+            print("\n=== Audio Recording and Transcription System ===")
+            print("This system will record your audio and transcribe it automatically.")
             
             # Setup microphone
             if not audio._setup_microphone():
                 print("Failed to setup microphone. Exiting...")
                 exit(1)
             
-            while True:
-                print("\nOptions:")
-                print("1. Record new audio")
-                print("2. List recordings")
-                print("3. Transcribe a recording")
-                print("4. Delete a recording")
-                print("5. Exit")
+            # Record and transcribe
+            print("\nPress 'ESC' to stop recording when you're done speaking...")
+            recording_path, transcription = audio.record_and_transcribe()
+            
+            if transcription:
+                print("\nTranscription Results:")
+                print(f"Language: {transcription['language']} "
+                      f"(confidence: {transcription['language_probability']:.2f})")
+                print(f"Processing time: {transcription['processing_time']:.2f} seconds")
+                print("\nText:")
+                print(transcription['text'])
                 
-                choice = input("\nEnter your choice (1-5): ").strip()
-                
-                if choice == "1":
-                    # Record new audio
-                    duration = int(input("Enter recording duration in seconds: "))
-                    save_transcription = input("Save transcription to file? (y/n): ").lower().strip() == 'y'
-                    
-                    print(f"\nStarting recording for {duration} seconds...")
-                    filename = audio._start_recording()
-                    time.sleep(duration)  # Record for specified duration
-                    
-                    file_path, transcription_result = audio._stop_recording(
-                        transcribe=True, 
-                        save_transcription=save_transcription
-                    )
-                    
-                    print(f"\nRecording saved to: {file_path}")
-                    
-                    if transcription_result:
-                        print("\nTranscription Results:")
-                        print(f"Language: {transcription_result['language']} "
-                              f"(confidence: {transcription_result['language_probability']:.2f})")
-                        print(f"Processing time: {transcription_result['processing_time']:.2f} seconds")
-                        print("\nText:")
-                        print(transcription_result['text'])
-                        
-                        if save_transcription:
-                            trans_path = os.path.join(
-                                audio.transcription_storage_path, 
-                                f"{filename}_transcribed.txt"
-                            )
-                            print(f"\nTranscription saved to: {trans_path}")
-                
-                elif choice == "2":
-                    # List recordings
-                    recordings = audio.list_recordings()
-                    if recordings:
-                        print("\nAvailable recordings:")
-                        for i, recording in enumerate(recordings, 1):
-                            print(f"{i}. {recording}")
-                    else:
-                        print("\nNo recordings found.")
-                
-                elif choice == "3":
-                    # Transcribe recording
-                    recordings = audio.list_recordings()
-                    if not recordings:
-                        print("\nNo recordings found.")
-                        continue
-                        
-                    print("\nAvailable recordings:")
-                    for i, recording in enumerate(recordings, 1):
-                        print(f"{i}. {recording}")
-                    
-                    idx = int(input("\nEnter the number of the recording to transcribe: ")) - 1
-                    if 0 <= idx < len(recordings):
-                        print("\nTranscribing... (this may take a while)")
-                        result = audio.transcribe_recording(recordings[idx])
-                        
-                        if result:
-                            print("\nTranscription Results:")
-                            print(f"Language: {result['language']} (confidence: {result['language_probability']:.2f})")
-                            print(f"Processing time: {result['processing_time']:.2f} seconds")
-                            print("\nText:")
-                            print(result['text'])
-                            
-                            print("\nSegments:")
-                            for segment in result['segments']:
-                                print(f"[{segment['start']:.2f}s -> {segment['end']:.2f}s] {segment['text']}")
-                        else:
-                            print("Transcription failed.")
-                    else:
-                        print("Invalid selection.")
-                
-                elif choice == "4":
-                    # Delete recording
-                    recordings = audio.list_recordings()
-                    if not recordings:
-                        print("\nNo recordings found.")
-                        continue
-                        
-                    print("\nAvailable recordings:")
-                    for i, recording in enumerate(recordings, 1):
-                        print(f"{i}. {recording}")
-                    
-                    idx = int(input("\nEnter the number of the recording to delete: ")) - 1
-                    if 0 <= idx < len(recordings):
-                        if audio.delete_recording(recordings[idx]):
-                            print(f"Successfully deleted {recordings[idx]}")
-                        else:
-                            print("Failed to delete recording.")
-                    else:
-                        print("Invalid selection.")
-                
-                elif choice == "5":
-                    print("\nExiting...")
-                    break
-                
-                else:
-                    print("\nInvalid choice. Please try again.")
-    
+                print(f"\nRecording saved to: {recording_path}")
+                print(f"Transcription saved to: {os.path.join(audio.transcription_storage_path, os.path.basename(recording_path).replace('.wav', '_transcribed.txt'))}")
+            
     except KeyboardInterrupt:
         print("\nProgram interrupted by user. Exiting...")
     except Exception as e:

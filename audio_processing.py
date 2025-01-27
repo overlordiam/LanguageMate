@@ -1,4 +1,3 @@
-
 #TODO: 1) Add flags like verbosity for finer details
 
 
@@ -11,8 +10,6 @@ from faster_whisper import WhisperModel
 from keyboard_handler import KeyboardHandler
 from pydantic import BaseModel
 from typing import List
-
-
 
 class Segment(BaseModel):
     start: float
@@ -31,7 +28,8 @@ class Audio:
     """
     This class handles recording, processing and deleting user audio.
     """
-    def __init__(self):
+    def __init__(self, verbose=False):
+        self.verbose = verbose
         self.p = pyaudio.PyAudio()
         self.sample_rate = 16000 #44100
         self.channels = 1
@@ -60,8 +58,14 @@ class Audio:
             bool: True if microphone is set up successfully, False otherwise
         """
         try:
-            # Get default input device info
             default_input = self.p.get_default_input_device_info()
+            
+            if self.verbose:
+                print("Microphone setup:")
+                print(f"Default input device: {default_input['name']}")
+                print(f"Sample rate: {self.sample_rate}")
+                print(f"Channels: {self.channels}")
+                print(f"Chunk size: {self.chunk_size}")
             
             # Test microphone by opening a stream briefly
             test_stream = self.p.open(
@@ -152,16 +156,26 @@ class Audio:
         # Save the recording
         recording_path = self._save_recording(self.current_filename)
         
-        # Perform transcription if requested
+        if self.verbose:
+            print(f"Recording stopped. File saved to: {recording_path}")
+            
         transcription_result = None
         if transcribe and recording_path:
-            print("\nTranscribing the recording...")
+            if self.verbose:
+                print("\nInitiating transcription process...")
+            else:
+                print("\nTranscribing...")
+                
             transcription_result = self.transcribe_recording(
                 self.current_filename + ".wav", 
                 save=save_transcription
             )
         
-        print(f"Transcription: {transcription_result.text}")
+        if self.verbose:
+            print(f"Full transcription result: {transcription_result}")
+        else:
+            print(f"Transcription: {transcription_result.text}")
+        
         return recording_path, transcription_result
     
     
@@ -363,7 +377,13 @@ class Audio:
         Returns:
             tuple: (recording_path, transcription_result)
         """
-        print(f"\nRecording... Press '{stop_key}' to stop recording")
+        if self.verbose:
+            print(f"\nInitiating recording session:")
+            print(f"Stop key: {stop_key}")
+            print(f"Save transcription: {save_transcription}")
+            print(f"Recording... Press '{stop_key}' to stop recording")
+        else:
+            print(f"\nRecording... Press '{stop_key}' to stop recording")
         
         # Initialize keyboard handler
         kb_handler = KeyboardHandler()
@@ -386,8 +406,16 @@ class Audio:
     
     def run(self, ):
         try:
-            print("\n=== Audio Recording and Transcription System ===")
-            print("This system will record your audio and transcribe it automatically.")
+            if self.verbose:
+                print("\n=== Audio Recording and Transcription System ===")
+                print("Configuration:")
+                print(f"Sample rate: {self.sample_rate}")
+                print(f"Channels: {self.channels}")
+                print(f"Chunk size: {self.chunk_size}")
+                print(f"Recording storage: {self.recording_storage_path}")
+                print(f"Transcription storage: {self.transcription_storage_path}")
+            else:
+                print("\n=== Audio Recording and Transcription System ===")
             
             # Setup microphone
             if not self._setup_microphone():
@@ -418,7 +446,8 @@ class Audio:
 
 
 if __name__ == "__main__":
-    Audio().run()
+    # Can be run with verbose=True to see more details
+    Audio(verbose=False).run()
     
     
     

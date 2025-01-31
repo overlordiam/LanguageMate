@@ -8,14 +8,16 @@ async def main():
     engine = LLMInferenceEngine()
     
     # Single inference
-    response = await engine.generate_response("Bonjour, comment allez-vous?")
+    response = await engine.generate_response("Can you explain me how ollama works?")
     print(response)
     
-    # # Batch inference
+    # Batch inference
     # inputs = [
-    #     # "Hello, how are you?"
-    #     # "Bonjour, comment allez-vous?",
-    #     "¿Hola, cómo estás?"
+    #     "Hello, how are you?"
+    #     "Bonjour, comment allez-vous?",
+    #     "¿Hola, cómo estás?",
+    #     "こんにちは",
+    #     "안녕하세요"
     # ]
     # responses = await engine.batch_generate(inputs)
     # for resp in responses:

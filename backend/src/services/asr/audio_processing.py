@@ -7,7 +7,7 @@ import os
 from threading import Thread
 import time
 from faster_whisper import WhisperModel
-from keyboard_handler import KeyboardHandler
+from services.asr.keyboard_handler import KeyboardHandler
 from pydantic import BaseModel
 from typing import List
 
@@ -24,7 +24,7 @@ class TranscriptionResult(BaseModel):
     processing_time: float
 
 
-class Audio:
+class ASRInferenceEngine:
     """
     This class handles recording, processing and deleting user audio.
     """
@@ -201,7 +201,7 @@ class Audio:
             
         return True
 
-    def transcribe_recording(self, filename=None, model_size="base", save=False) -> TranscriptionResult | None:
+    def transcribe_recording(self, file=None, model_size="base", save=False) -> TranscriptionResult | None:
         """
         Transcribe a recorded audio file
         
@@ -223,21 +223,21 @@ class Audio:
                 return None
 
             # If filename not provided, use most recent recording
-            if filename is None:
-                recordings = self._list_recordings()
-                if not recordings:
-                    raise ValueError("No recordings found")
-                filename = recordings[-1]
+            # if filename is None:
+            #     recordings = self._list_recordings()
+            #     if not recordings:
+            #         raise ValueError("No recordings found")
+            #     filename = recordings[-1]
 
-            file_path = os.path.join(self.recording_storage_path, filename)
-            if not os.path.exists(file_path):
-                raise FileNotFoundError(f"Recording {filename} not found")
+            # file_path = os.path.join(self.recording_storage_path, filename)
+            # if not os.path.exists(file_path):
+            #     raise FileNotFoundError(f"Recording {filename} not found")
 
             # Start timing
             start_time = time.time()
 
             # Perform transcription
-            segments, info = self.model.transcribe(file_path, beam_size=5)
+            segments, info = self.model.transcribe(file, beam_size=5)
             text = ""
             for segment in segments:
                 text += segment.text + " "
@@ -444,10 +444,19 @@ class Audio:
         finally:
             self._cleanup()    
 
+from fastapi import FastAPI
 
-if __name__ == "__main__":
-    # Can be run with verbose=True to see more details
-    Audio(verbose=False).run()
+app = FastAPI()
+
+
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
+
+
+# if __name__ == "__main__":
+#     # Can be run with verbose=True to see more details
+#     Audio(verbose=False).run()
     
     
     

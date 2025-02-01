@@ -10,7 +10,7 @@ from TTS.api import TTS
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class TTSEngine:
+class TTSInferenceEngine:
     def __init__(self, model_name="tts_models/multilingual/multi-dataset/xtts_v2", speaker_wav="voice_samples/female.wav"):
         """Initialize the TTS Engine with specified model and speaker voice."""
         self.model_name = model_name
@@ -28,7 +28,7 @@ class TTSEngine:
             logger.error(f"Failed to load model: {str(e)}")
             raise
 
-    def generate_speech(self, text: str, language: str = "", play_audio: bool = True):
+    def generate_speech(self, text: str, language: str = "", play_audio: bool = False):
         """
         Generate speech from text and optionally play it.
         
@@ -55,8 +55,8 @@ class TTSEngine:
                 audio_data = np.array(audio_data)
 
             # Play audio if requested
-            if play_audio:
-                self.play_audio(audio_data)
+            # if play_audio:
+            #     self.play_audio(audio_data)
 
             logger.info(f"TTS completed in {time.time() - t0:.2f} seconds")
             return audio_data
@@ -79,7 +79,7 @@ class TTSEngine:
 
 # Initialize Flask app and load the model
 app = Flask(__name__)
-tts_engine = TTSEngine()
+tts_engine = TTSInferenceEngine()
 
 @app.route('/stream', methods=['POST'])
 def stream_tts():

@@ -19,7 +19,8 @@ function App() {
 
       mediaRecorder.current.onstop = async () => {
         const audioBlob = new Blob(audioChunks.current, { type: "audio/wav" });
-        await sendAudioToBackend(audioBlob);
+        const audioFile = new File([audioBlob], "audio.wav", { type: "audio/wav" });
+        await sendAudioToBackend(audioFile);
       };
 
       mediaRecorder.current.start();
@@ -40,11 +41,11 @@ function App() {
     }
   };
 
-  const sendAudioToBackend = async (audioBlob) => {
+  const sendAudioToBackend = async (audioFile) => {
     setIsProcessing(true);
     try {
       const formData = new FormData();
-      formData.append("audio", audioBlob);
+      formData.append("file", audioFile);
 
       const response = await fetch("http://localhost:5000/process", {
         method: "POST",
@@ -52,14 +53,21 @@ function App() {
       });
 
       if (!response.ok) {
-        throw new Error("Network response was not ok");
+        throw new Error(`Server responded with ${response.status}`);
       }
-
-      // Handle audio response from backend
-      const audioResponse = await response.blob();
-      const audioUrl = URL.createObjectURL(audioResponse);
+  
+      // Verify content type
+      const contentType = response.headers.get("content-type");
+      if (!contentType?.startsWith("audio/")) {
+        throw new Error("Invalid audio response from server");
+      }
+  
+      // Create audio URL and play
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
       audio.play();
+      
     } catch (error) {
       console.error("Error sending audio to backend:", error);
       alert("Error processing audio. Please try again.");

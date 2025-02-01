@@ -1,6 +1,6 @@
 import asyncio
 
-from llm_inference_engine import LLMInferenceEngine
+from backend.src.services.llm.llm_inference_engine import LLMInferenceEngine
 
 
 async def main():

@@ -1,59 +1,65 @@
-import sounddevice as sd
+import regex as re
 import torch
+import numpy as np
+from scipy.io import wavfile
 from TTS.tts.configs.xtts_config import XttsConfig
 from TTS.tts.models.xtts import Xtts
-import numpy as np
+
+def split_into_sentences(text):
+    pattern = r'(?<=[.!?])\s+(?=[A-Z\p{Lu}])'
+    sentences = re.split(pattern, text)
+    return [s.strip() for s in sentences if s.strip()]
+
+def process_multilingual_text(text, language_code, model, gpt_cond_latent, speaker_embedding):
+    sentences = split_into_sentences(text)
+    audio_chunks = []
+
+    for sentence in sentences:
+        try:
+            streamer = model.inference_stream(
+                sentence,
+                language_code,
+                gpt_cond_latent,
+                speaker_embedding,
+                enable_text_splitting=False
+            )
+            
+            for chunk in streamer:
+                chunk = chunk.squeeze().cpu().numpy()
+                audio_chunks.append(chunk)
+                print(f"Processed {len(chunk)} samples")
+        except Exception as e:
+            print(f"Error processing sentence: {sentence}")
+            print(f"Error details: {str(e)}")
+
+    return audio_chunks
+
 # Initialize model
 config = XttsConfig()
-config.load_json("c:/Users/joshu/AppData/Local/tts/tts_models--multilingual--multi-dataset--xtts_v2/config.json")
+config.load_json("/teamspace/studios/this_studio/tts/tts_models--multilingual--multi-dataset--xtts_v2/config.json")
 model = Xtts.init_from_config(config)
-model.load_checkpoint(config, checkpoint_dir="c:/Users/joshu/AppData/Local/tts/tts_models--multilingual--multi-dataset--xtts_v2", use_deepspeed=False)
+model.load_checkpoint(config, checkpoint_dir="/teamspace/studios/this_studio/tts/tts_models--multilingual--multi-dataset--xtts_v2", use_deepspeed=False)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
-
 
 # Generate conditioning latents
 gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(
     audio_path=["voice_samples/female.wav"]
 )
 
-# Text input
-text = "If the model isn't present, the user can download it using the ModelManager."
+# Text input (you can change this to any language)
+text = "Paris, la ville de lumière, étincelle de beauté et d'histoire. Ses rues pavées racontent des siècles de passion, ses cafés murmurent des histoires d'amour, et la Tour Eiffel veille majestueusement sur cette cité extraordinaire. Chaque coin de rue cache un secret, chaque boulangerie offre un moment de délice, et chaque coucher de soleil sur la Seine est une symphonie de couleurs."
+language_code = "fr"  # Change this according to the input text language
 
-print('\n model inferencing on the way......')
-# Create streamer with generation parameters
-try:
-    streamer = model.inference_stream(
-        text,
-        "en",
-        gpt_cond_latent,
-        speaker_embedding,
-        enable_text_splitting=False,
-        # Add tokenizer=model.tokenizer if needed
-    )
-except Exception as e:
-    print(f'exception has occured : {str(e)}')
-finally:
-    print('model inference done...........')
-# Audio playback setup
-sd_stream = sd.OutputStream(
-    samplerate=24000,
-    channels=1,
-    dtype='int16',
-    blocksize=1024
-)
-sd_stream.start()
+print('\nModel inferencing on the way......')
 
-try:
-    print(streamer)
-    for chunk in streamer:
-        print(type(chunk))
-        chunk = chunk.squeeze().cpu()
-        print('chunk conversion done!!')
-        sd_stream.write(np.int16(chunk * 32768))
-        print(f"Streamed {len(chunk)} samples")
-except Exception as e:
-    print(f"Error during streaming: {str(e)}")
-finally:
-    sd_stream.stop()
-    sd_stream.close()
+audio_chunks = process_multilingual_text(text, language_code, model, gpt_cond_latent, speaker_embedding)
+
+print('Model inference done...........')
+
+# Concatenate all audio chunks and save
+full_audio = np.concatenate(audio_chunks)
+full_audio = np.int16(full_audio * 32768)
+output_file = f"output_audio_{language_code}.wav"
+wavfile.write(output_file, 24000, full_audio)
+print(f"Audio saved to {output_file}")

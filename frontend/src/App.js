@@ -66,6 +66,7 @@ function App() {
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
+      console.log(audio);
       audio.play();
       
     } catch (error) {

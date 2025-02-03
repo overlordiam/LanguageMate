@@ -235,7 +235,8 @@ class ASRInferenceEngine:
 
             # Start timing
             start_time = time.time()
-
+            print(file)
+            print(type(file))
             # Perform transcription
             segments, info = self.model.transcribe(file, beam_size=5)
             text = ""

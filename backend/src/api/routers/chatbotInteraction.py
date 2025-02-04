@@ -1,4 +1,6 @@
-from fastapi import FastAPI, APIRouter, UploadFile
+from fastapi import FastAPI, APIRouter, UploadFile, Header, Response
+from typing import Optional
+import uuid
 from api.orchestrator import PipelineOrchestrator
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -21,16 +23,38 @@ app.add_middleware(
 
 
 @router.post("/process")
-async def process_voice(file: UploadFile):
-    
+async def process_voice(
+    file: UploadFile,
+    x_session_id: Optional[str] = Header(None)
+):
+    # Generate session ID if not provided
+    session_id = x_session_id or str(uuid.uuid4())
+    print(f"session id: {session_id}")
+
     audio_bytes = await file.read()
     audio_buffer = BytesIO(audio_bytes)
     print(f"bytes: {audio_buffer}")
     
-    # audio = await file.read()
-    result = await orchestrator.process_audio(audio_buffer)
-    return result
+    # Process the audio and get response
+    result = await orchestrator.process_audio(
+        audio=audio_buffer,
+        session_id=session_id
+    )
+    
+    # Return both audio response and conversation history
+    response = result['audio']
+    response.headers['X-Session-ID'] = session_id
+    response.headers['X-Conversation-History'] = str(result['conversation'])
+    return response
 
+@router.post("/new-conversation")
+async def start_new_conversation(
+    x_session_id: Optional[str] = Header(None)
+):
+    session_id = x_session_id or str(uuid.uuid4())
+    orchestrator.start_new_conversation(session_id)
+    print(f"session_id: {session_id}")
+    return {"session_id": session_id}
 
 # Include the router in the FastAPI app
 app.include_router(router)

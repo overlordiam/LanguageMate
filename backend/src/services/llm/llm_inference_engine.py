@@ -7,7 +7,6 @@ from typing import Any, Dict, Optional
 from pydantic import BaseModel
 
 import ollama
-from langdetect import detect
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 
@@ -97,7 +96,7 @@ class LLMInferenceEngine:
             raise RuntimeError(f"Failed to check/pull model: {str(e)}")
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-    def generate_response(self, input_text: str, **kwargs) -> LLMResult:
+    def generate_response(self, input_text: str, language: str, **kwargs) -> LLMResult:
         """
         Generate a response for the given input text in the same language.
         
@@ -109,11 +108,10 @@ class LLMInferenceEngine:
             Dict[str, Any]: Response containing generated text and metadata
         """
         try:
-            # Detect input language
-            input_language = detect(input_text)
+            input_language = language
             
             # Prepare system prompt to ensure output in the same language
-            system_prompt = f"You are a helpful assistant. Please respond in {input_language}."
+            system_prompt = f"You are a helpful assistant. Please respond in {input_language} and keep your responses laconic."
             
             # Prepare the request parameters
             request_params = {

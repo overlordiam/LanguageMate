@@ -31,7 +31,7 @@ class PipelineOrchestrator:
         transcription = self.asr.transcribe_recording(file=audio)
         print(f"Transcription: {transcription.text}")
         
-        response = self.llm.generate_response(transcription.text)
+        response = self.llm.generate_response(transcription.text,transcription.language)
         print(f"LLM Response: {response}")
         
         data = {

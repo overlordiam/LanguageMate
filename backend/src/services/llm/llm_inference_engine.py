@@ -15,7 +15,6 @@ class LLMResult(BaseModel):
     generated_text: Any
     input_language: Any
     model_name: str
-    status: str
     
 
 class LLMInferenceEngine:
@@ -131,9 +130,7 @@ class LLMInferenceEngine:
             data = {
                 "generated_text": response.message.content,
                 "input_language": language,
-                "model_name": self.model_name,
-                "status": "success"
-            }
+                "model_name": self.model_name            }
 
             data = LLMResult(**data)
             
@@ -145,7 +142,6 @@ class LLMInferenceEngine:
                 "generated_text": "",
                 "input_language": None,
                 "model_name": self.model_name,
-                "status": "error",
                 "error_message": str(e)
             }
     

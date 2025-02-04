@@ -11,6 +11,8 @@ from typing import Dict, List
 
 class PipelineOrchestrator:
     _instance = None
+    MAX_TOKENS = 10  # Example token limit, adjust based on your model
+    TOKEN_BUFFER = 3  # Reserve some tokens for the model's response
     
     def __new__(cls):
         if cls._instance is None:
@@ -43,6 +45,16 @@ class PipelineOrchestrator:
         """Get the conversation history for the given session."""
         return self.conversations.get(session_id, [])
 
+    def truncate_chat_history(self, session_id: str, max_tokens=MAX_TOKENS, token_buffer=TOKEN_BUFFER):
+        """
+        Truncates the chat history to fit within the model's context length.
+        """
+        chat_history = self.conversations[session_id]
+        total_tokens = sum(len(msg["content"].split()) for msg in chat_history)  # Approx token count
+        while total_tokens > max_tokens - token_buffer and len(chat_history) > 1:
+            chat_history.pop(0)  # Remove the oldest message
+            total_tokens = sum(len(msg["content"].split()) for msg in chat_history)
+
     async def process_audio(self, audio, session_id: str):
         print(f"Processing audio for session {session_id}...")
         
@@ -60,6 +72,9 @@ class PipelineOrchestrator:
             "role": "user",
             "content": user_message
         })
+
+        # truncates old chats when the conversation history exceeds the permissable context length
+        self.truncate_chat_history(session_id=session_id)
         
         # Get LLM response with conversation history
         response = self.llm.generate_response(

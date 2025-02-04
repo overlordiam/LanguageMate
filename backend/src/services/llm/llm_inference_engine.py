@@ -3,7 +3,7 @@ import logging
 import os
 import subprocess
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
 import ollama
@@ -97,7 +97,7 @@ class LLMInferenceEngine:
             raise RuntimeError(f"Failed to check/pull model: {str(e)}")
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-    def generate_response(self, input_text: str, **kwargs) -> LLMResult:
+    def generate_response(self, input_text: str, language: str, chat_history: List[dict], **kwargs) -> LLMResult:
         """
         Generate a response for the given input text in the same language.
         
@@ -109,19 +109,14 @@ class LLMInferenceEngine:
             Dict[str, Any]: Response containing generated text and metadata
         """
         try:
-            # Detect input language
-            input_language = detect(input_text)
             
             # Prepare system prompt to ensure output in the same language
-            system_prompt = f"You are a helpful assistant. Please respond in {input_language}."
+            system_prompt = f"You are a helpful assistant. Please respond in {language}."
             
             # Prepare the request parameters
             request_params = {
                 "model": self.model_name,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": input_text}
-                ],
+                "messages": [{"role": "system", "content": system_prompt}] + chat_history,
                 "options": {
                     "temperature": self.temperature
                 }
@@ -135,7 +130,7 @@ class LLMInferenceEngine:
             response = ollama.chat(**request_params)
             data = {
                 "generated_text": response.message.content,
-                "input_language": input_language,
+                "input_language": language,
                 "model_name": self.model_name,
                 "status": "success"
             }

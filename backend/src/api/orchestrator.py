@@ -51,9 +51,9 @@ class PipelineOrchestrator:
             self.start_new_conversation(session_id)
         
         # Transcribe audio
-        transcription = self.asr.transcribe_recording(file=audio)
-        user_message = transcription.text
-        print(f"Transcription: {user_message}")
+        transcription_result = self.asr.transcribe_recording(file=audio)
+        user_message, language = transcription_result.text, transcription_result.language
+        print(f"Transcription: {user_message}, language: {language}")
         
         # Add user message to history
         self.conversations[session_id].append({
@@ -63,8 +63,9 @@ class PipelineOrchestrator:
         
         # Get LLM response with conversation history
         response = self.llm.generate_response(
-            user_message, 
-            conversation_history=self.conversations[session_id]
+            user_message,
+            language, 
+            chat_history=self.conversations[session_id]
         )
         print(f"LLM Response: {response}")
         
@@ -73,6 +74,8 @@ class PipelineOrchestrator:
             "role": "assistant",
             "content": response.generated_text
         })
+
+        print(f"conversation history: {self.conversations[session_id]}")
         
         # Generate speech from response
         data = {

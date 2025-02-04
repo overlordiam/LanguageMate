@@ -29,7 +29,7 @@ async def process_voice(
 ):
     # Generate session ID if not provided
     session_id = x_session_id or str(uuid.uuid4())
-    print(f"session id: {session_id}")
+    print(f"process: session id: {session_id}")
 
     audio_bytes = await file.read()
     audio_buffer = BytesIO(audio_bytes)
@@ -53,7 +53,7 @@ async def start_new_conversation(
 ):
     session_id = x_session_id or str(uuid.uuid4())
     orchestrator.start_new_conversation(session_id)
-    print(f"session_id: {session_id}")
+    print(f"new-conversation: session_id: {session_id}")
     return {"session_id": session_id}
 
 # Include the router in the FastAPI app

@@ -1,11 +1,34 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import "./App.css";
 
 function App() {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
+  const [conversation, setConversation] = useState([]);
   const mediaRecorder = useRef(null);
   const audioChunks = useRef([]);
+
+  useEffect(() => {
+    // Start a new conversation when component mounts
+    startNewConversation();
+  }, []);
+
+  const startNewConversation = async () => {
+    try {
+      const response = await fetch(
+        "http://localhost:5000/new-conversation",
+        {
+          method: "POST",
+        }
+      );
+      const data = await response.json();
+      setSessionId(data.session_id);
+      setConversation([]);
+    } catch (error) {
+      console.error("Error starting new conversation:", error);
+    }
+  };
 
   const startRecording = async () => {
     try {
@@ -37,38 +60,43 @@ function App() {
     if (mediaRecorder.current && isRecording) {
       mediaRecorder.current.stop();
       setIsRecording(false);
-      // mediaRecorder.current.stream.getTracks().forEach((track) => track.stop());
+      mediaRecorder.current.stream.getTracks().forEach((track) => track.stop());
     }
   };
 
-  const sendAudioToBackend = async (audioFile) => {
+  const sendAudioToBackend = async (audioBlob) => {
     setIsProcessing(true);
     try {
       const formData = new FormData();
-      formData.append("file", audioFile);
+      formData.append("file", audioBlob);
 
+      console.log(sessionId ? sessionId : "No sessionId")
       const response = await fetch("http://localhost:5000/process", {
         method: "POST",
         body: formData,
+        headers: sessionId ? { "X-Session-ID": sessionId } : {},
       });
 
       if (!response.ok) {
-        throw new Error(`Server responded with ${response.status}`);
+        throw new Error("Network response was not ok");
       }
-  
-      // Verify content type
-      const contentType = response.headers.get("content-type");
-      if (!contentType?.startsWith("audio/")) {
-        throw new Error("Invalid audio response from server");
+
+      // Get conversation history from headers
+      const newSessionId = response.headers.get("X-Session-ID");
+      const conversationHistory = JSON.parse(
+        response.headers.get("X-Conversation-History") || "[]"
+      );
+
+      if (newSessionId) {
+        setSessionId(newSessionId);
       }
-  
-      // Create audio URL and play
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
+      setConversation(conversationHistory);
+
+      // Handle audio response
+      const audioResponse = await response.blob();
+      const audioUrl = URL.createObjectURL(audioResponse);
       const audio = new Audio(audioUrl);
-      console.log(audio);
       audio.play();
-      
     } catch (error) {
       console.error("Error sending audio to backend:", error);
       alert("Error processing audio. Please try again.");
@@ -81,6 +109,13 @@ function App() {
     <div className="App">
       <div className="chat-container">
         <h1>Voice Chatbot</h1>
+        <div className="conversation">
+          {conversation.map((message, index) => (
+            <div key={index} className={`message ${message.role}`}>
+              <div className="message-content">{message.content}</div>
+            </div>
+          ))}
+        </div>
         <p className="status">
           {isProcessing
             ? "Processing..."
@@ -88,13 +123,22 @@ function App() {
             ? "Recording..."
             : "Ready to record"}
         </p>
-        <button
-          className={`record-button ${isRecording ? "recording" : ""}`}
-          onClick={isRecording ? stopRecording : startRecording}
-          disabled={isProcessing}
-        >
-          {isRecording ? "Stop Recording" : "Start Recording"}
-        </button>
+        <div className="button-container">
+          <button
+            className={`record-button ${isRecording ? "recording" : ""}`}
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={isProcessing}
+          >
+            {isRecording ? "Stop Recording" : "Start Recording"}
+          </button>
+          <button
+            className="new-chat-button"
+            onClick={startNewConversation}
+            disabled={isProcessing || isRecording}
+          >
+            New Chat
+          </button>
+        </div>
       </div>
     </div>
   );

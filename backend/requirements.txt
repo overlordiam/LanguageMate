@@ -75,7 +75,6 @@ keyboard==0.13.5
 kiwisolver==1.4.8
 langcodes==3.5.0
 langdetect==1.0.9
--e git+https://github.com/overlordiam/LanguageMate.git@517b5baff79d47ef6289e3ea4c4660e3b7a13c59#egg=language_chatbot_backend&subdirectory=backend
 language_data==1.3.0
 lazy_loader==0.4
 librosa==0.10.2.post1

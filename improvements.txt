@@ -1,4 +1,2 @@
-1) User can choose the hotkey commands, through custom configs.
-2) Can ask user for which language the conversation will be in. The latency in using detection will
-be reduced.
-3) hotkeys to cut the model off and direct speech for it to listen.
+1) Improve system prompt.
+2) 

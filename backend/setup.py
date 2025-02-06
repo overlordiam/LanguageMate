@@ -10,4 +10,5 @@ setup(
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     install_requires=required_packages,  # Load dependencies from requirements.txt
+    python_requires='3.10.10'
 )

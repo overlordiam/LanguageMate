@@ -1,6 +1,6 @@
 #TODO: 1) Add flags like verbosity for finer details
 
-
+import torch
 import pyaudio
 import wave
 import os
@@ -191,8 +191,14 @@ class ASRInferenceEngine:
         if self.model is None:
             try:
                 model_size = "large-v3"
-                device = "cuda" if gpu else 'cpu'
-                self.model = WhisperModel(model_size, device=device, compute_type='int8')
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+                
+                self.model = WhisperModel(model_size, 
+                                          device=device, 
+                                          compute_type='int8' if device == "cpu" else 'float16')
+                
+                self.model.to(device)
+                
                 return True
             
             except Exception as e:

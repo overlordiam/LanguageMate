@@ -1,0 +1,6 @@
+/recordings
+/transcriptions
+*.mp3
+languageAssistant/
+.env
+__pycache__

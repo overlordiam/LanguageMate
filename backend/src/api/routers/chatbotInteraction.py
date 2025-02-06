@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import soundfile as sf
 from io import BytesIO
 import numpy as np
-
+import time
 
 app = FastAPI()  # Define FastAPI app
 router = APIRouter()
@@ -34,6 +34,7 @@ async def process_voice(
     audio_bytes = await file.read()
     audio_buffer = BytesIO(audio_bytes)
     print(f"bytes: {audio_buffer}")
+    start = time.time()
     
     # Process the audio and get response
     result = await orchestrator.process_audio(
@@ -41,6 +42,8 @@ async def process_voice(
         session_id=session_id
     )
     
+    end = time.time()
+    print(f"total time taken: {end - start}")
     # Return both audio response and conversation history
     response = result['audio']
     response.headers['X-Session-ID'] = session_id

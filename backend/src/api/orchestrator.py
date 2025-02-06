@@ -11,7 +11,7 @@ from typing import Dict, List
 
 class PipelineOrchestrator:
     _instance = None
-    MAX_TOKENS = 10  # Example token limit, adjust based on your model
+    MAX_TOKENS = 100  # Example token limit, adjust based on your model
     TOKEN_BUFFER = 3  # Reserve some tokens for the model's response
     
     def __new__(cls):

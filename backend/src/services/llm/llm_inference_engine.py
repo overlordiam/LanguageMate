@@ -10,6 +10,8 @@ import ollama
 from langdetect import detect
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from services.llm.utils import load_yaml_prompts
+
 
 class LLMResult(BaseModel):
     generated_text: Any
@@ -110,7 +112,8 @@ class LLMInferenceEngine:
         try:
             
             # Prepare system prompt to ensure output in the same language
-            system_prompt = f"You are a helpful assistant. Please respond in {language}."
+            system_prompt = load_yaml_prompts(model=self.model_name, language=language)
+            print(f"system_prompt: {system_prompt}")
             
             # Prepare the request parameters
             request_params = {
@@ -130,7 +133,8 @@ class LLMInferenceEngine:
             data = {
                 "generated_text": response.message.content,
                 "input_language": language,
-                "model_name": self.model_name            }
+                "model_name": self.model_name            
+                }
 
             data = LLMResult(**data)
             

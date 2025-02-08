@@ -11,10 +11,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class TTSInferenceEngine:
-    def __init__(self, model_name="tts_models/multilingual/multi-dataset/xtts_v2", speaker_wav="voice_samples/female.wav"):
+    def __init__(self, model_name="tts_models/multilingual/multi-dataset/xtts_v2", speaker_wav="female.wav"):
         """Initialize the TTS Engine with specified model and speaker voice."""
         self.model_name = model_name
-        self.speaker_wav = speaker_wav
+        self.speaker_wav = "voice_samples/" + speaker_wav
         self.model = self._load_model()
 
     def _load_model(self):

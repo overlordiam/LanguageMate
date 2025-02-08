@@ -1,0 +1,41 @@
+GENERAL:
+  use_gpu: False
+  verbose: True
+
+ASR:
+  models:
+    whisper_large_v3:
+      model_name: openai/whisper-large-v3
+      model_size: large-v3
+      beam_size: 5
+      source: ctranslate2
+    whisper_base:
+      model_name: openai/whisper-base
+      model_size: base
+      beam_size: 5
+      source: ctranslate2
+
+LLM:
+  models:
+    llama3.2:1b:
+      model_name: llama3.2:1b
+      context_length: 4000
+      token_buffer: 500
+      temperature: 0.7
+      system_prompt: |
+        Instructions on how you should behave:
+        - You are an expert language assistant and a language teacher.
+        - Always respond in {language} unless the user asks you to explain or teach something in another language.
+        - Keep your response brief and meaningful.
+        - Your responses are read aloud via TTS, so respond clearly with zero fluff. Avoid long messages and lists.
+        - Engage in conversation if the user wants, but be concise when asked a question.
+        source: Ollama
+
+TTS:
+  models:
+    xtts_v2:
+      model_name: tts_models/multilingual/multi-dataset/xtts_v2
+      speaker: female.wav
+    xtts_v1:
+      model_name: tts_models/multilingual/multi-dataset/xtts_v1
+      speaker: male.wav

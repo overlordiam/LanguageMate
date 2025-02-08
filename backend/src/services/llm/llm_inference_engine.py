@@ -7,17 +7,14 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
 import ollama
-from langdetect import detect
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from services.llm.utils import load_yaml_prompts
 
 
 class LLMResult(BaseModel):
     generated_text: Any
     input_language: Any
     model_name: str
-    
 
 class LLMInferenceEngine:
     """
@@ -25,7 +22,7 @@ class LLMInferenceEngine:
     and generates output in the same language using Ollama.
     """
     
-    def __init__(self, model_name: str = "llama3.2:1b", temperature: float = 0.7):
+    def __init__(self, model_name: str = "llama3.2:1b", temperature: float = 0.7, system_prompt: str = ""):
         """
         Initialize the LLM Inference Engine.
         
@@ -35,6 +32,7 @@ class LLMInferenceEngine:
         """
         self.model_name = model_name
         self.temperature = temperature
+        self.system_prompt = system_prompt
         self.logger = logging.getLogger(__name__)
         
         # Configure logging
@@ -111,14 +109,12 @@ class LLMInferenceEngine:
         """
         try:
             
-            # Prepare system prompt to ensure output in the same language
-            system_prompt = load_yaml_prompts(model=self.model_name, language=language)
-            print(f"system_prompt: {system_prompt}")
+            print(f"system_prompt: {self.system_prompt}")
             
             # Prepare the request parameters
             request_params = {
                 "model": self.model_name,
-                "messages": [{"role": "system", "content": system_prompt}] + chat_history,
+                "messages": [{"role": "system", "content": self.system_prompt}] + chat_history,
                 "options": {
                     "temperature": self.temperature
                 }

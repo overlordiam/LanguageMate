@@ -24,12 +24,14 @@ class ASRInferenceEngine:
     """
     This class handles recording, processing and deleting user audio.
     """
-    def __init__(self, verbose=False):
+    def __init__(self, verbose=False, model_size='base', beam_size=5):
         self.verbose = verbose
         self.model = None
+        self.model_size = model_size
+        self.beam_size = beam_size
     
     
-    def _load_model(self, model_size="base"):
+    def _load_model(self):
         """
         Lazy load the Whisper model
         
@@ -40,10 +42,9 @@ class ASRInferenceEngine:
         os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
         if self.model is None:
             try:
-                model_size = "large-v3"
                 device = "cuda" if torch.cuda.is_available() else "cpu"
                 
-                self.model = WhisperModel(model_size, 
+                self.model = WhisperModel(self.model_size, 
                                           device=device, 
                                           compute_type='int8' if device == "cpu" else 'float16')
                 
@@ -73,7 +74,7 @@ class ASRInferenceEngine:
         """
         try:
             # Load model if not already loaded
-            if not self._load_model(model_size):
+            if not self._load_model():
                 return None
 
             # Start timing
@@ -81,7 +82,7 @@ class ASRInferenceEngine:
             print(file)
             print(type(file))
             # Perform transcription
-            segments, info = self.model.transcribe(file, beam_size=5)
+            segments, info = self.model.transcribe(file, beam_size=self.beam_size)
             text = ""
             for segment in segments:
                 text += segment.text + " "

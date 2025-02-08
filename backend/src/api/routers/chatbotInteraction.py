@@ -11,11 +11,15 @@ import time
 
 app = FastAPI()  # Define FastAPI app
 router = APIRouter()
-orchestrator = PipelineOrchestrator()
+orchestrator = PipelineOrchestrator(
+    asr_model = "whisper_large_v3",
+    llm_model = "llama3.2:1b",
+    tts_model = "xtts_v2"
+)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Or use ["*"] for all
+    allow_origins=["*"],  # Or use ["*"] for all
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
     allow_headers=["*"],  # Allow all headers

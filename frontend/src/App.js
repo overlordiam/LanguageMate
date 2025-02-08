@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import "./App.css";
 
 function App() {
@@ -8,27 +8,26 @@ function App() {
   const [conversation, setConversation] = useState([]);
   const mediaRecorder = useRef(null);
   const audioChunks = useRef([]);
+  const host = process.env.REACT_APP_SERVER_ENDPOINT_LOCAL;
 
-  useEffect(() => {
-    // Start a new conversation when component mounts
-    startNewConversation();
-  }, []);
-
-  const startNewConversation = async () => {
+  const startNewConversation = useCallback(async () => {
     try {
-      const response = await fetch(
-        "http://localhost:5000/new-conversation",
-        {
-          method: "POST",
-        }
-      );
+      const response = await fetch(`${host}/new-conversation`, {
+        method: "POST",
+      });
       const data = await response.json();
       setSessionId(data.session_id);
       setConversation([]);
     } catch (error) {
       console.error("Error starting new conversation:", error);
     }
-  };
+  }, [host]);
+  
+  
+  useEffect(() => {
+    // Start a new conversation when component mounts
+    startNewConversation();
+  }, [startNewConversation]);
 
   const startRecording = async () => {
     try {
@@ -71,10 +70,10 @@ function App() {
       formData.append("file", audioBlob);
 
       console.log(sessionId ? sessionId : "No sessionId")
-      const response = await fetch("http://localhost:5000/process", {
+      const response = await fetch(`${host}/process`, {
         method: "POST",
         body: formData,
-        headers: sessionId ? { "X-Session-ID": sessionId } : {},
+        // headers: sessionId ? { "X-Session-ID": sessionId } : {},
       });
 
       if (!response.ok) {

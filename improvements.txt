@@ -1,2 +1,14 @@
+## For v1:
 1) Improve system prompt.
-2) 
+5) Add test code to all modules.
+6) Add config.yaml to frontend and backend, to store all parameters related to models.
+
+
+## For v2:
+2) MongoDB to store the chat history for each user and each session.
+3) Factory class to make a model agnostic workflow.
+4) Try different models for each module.
+7) Save and render audio in chat UI
+8) Improve overall UI 
+9) Streaming audio for TTS
+10) Implement VAD

@@ -57,6 +57,8 @@ class PipelineOrchestrator:
 
     async def process_audio(self, audio, session_id: str):
         print(f"Processing audio for session {session_id}...")
+
+        print(f"audio type: {type(audio)}")
         
         # Get or create conversation history
         if session_id not in self.conversations:

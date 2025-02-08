@@ -56,5 +56,3 @@ and then run:
 "pip install -e ."
 
 Cannot send sessionId as headers to lightningAI server.
-
-add .to(device) to all the models

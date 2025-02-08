@@ -1,6 +1,8 @@
 import yaml
 
 def load_yaml_prompts(model, language):
+
+    #TODO: Make the path to prompt.yaml dynamic
     with open("src/services/llm/prompts.yaml", "r") as file:
         prompts = yaml.safe_load(file)
 

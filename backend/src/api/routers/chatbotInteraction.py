@@ -15,7 +15,7 @@ orchestrator = PipelineOrchestrator()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Or use ["*"] for all
+    allow_origins=[],  # Or use ["*"] for all
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
     allow_headers=["*"],  # Allow all headers
